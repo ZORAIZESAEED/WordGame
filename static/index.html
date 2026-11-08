@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Word Game</title>
+<style>
+  :root { --bg:#121213; --fg:#f4f4f4; --muted:#818384; --ok:#538d4e; --mid:#b59f3b; --no:#3a3a3c; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif;
+         display:flex; flex-direction:column; align-items:center; padding:24px 12px; }
+  h1 { margin:0 0 4px; letter-spacing:.1em; }
+  #msg { min-height:1.4em; color:var(--muted); margin:8px 0 16px; text-align:center; }
+  #board { display:grid; grid-template-rows:repeat(6,1fr); gap:6px; margin-bottom:16px; }
+  .row { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+  .tile { width:56px; height:56px; border:2px solid var(--no); display:flex; align-items:center;
+          justify-content:center; font-size:1.8rem; font-weight:700; text-transform:uppercase; }
+  .tile.filled { border-color:var(--muted); }
+  .tile.correct { background:var(--ok); border-color:var(--ok); }
+  .tile.present { background:var(--mid); border-color:var(--mid); }
+  .tile.absent  { background:var(--no);  border-color:var(--no); }
+  form { display:flex; gap:8px; margin-bottom:8px; }
+  input { padding:10px; font-size:1rem; border-radius:6px; border:1px solid var(--muted);
+          background:#1c1c1e; color:var(--fg); text-transform:uppercase; }
+  button { padding:10px 16px; font-size:1rem; border-radius:6px; border:0; background:var(--ok);
+           color:#fff; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  #board-wrap { margin-top:20px; width:260px; }
+  ol { padding-left:20px; color:var(--muted); }
+</style>
+</head>
+<body>
+  <h1>WORD GAME</h1>
+  <div id="msg">Enter a name to start.</div>
+
+  <form id="start">
+    <input id="player" placeholder="Your name" maxlength="32" autocomplete="off" required>
+    <button>Start</button>
+  </form>
+
+  <div id="board" hidden></div>
+
+  <form id="guess" hidden>
+    <input id="word" placeholder="5 letters" maxlength="5" minlength="5" autocomplete="off" required>
+    <button>Guess</button>
+  </form>
+
+  <div id="board-wrap">
+    <h3>Top scores</h3>
+    <ol id="leaders"></ol>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let gameId = null;
+
+function render(game) {
+  const board = $("board");
+  board.innerHTML = "";
+  for (let r = 0; r < game.max_attempts; r++) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const g = game.guesses[r];
+    for (let c = 0; c < 5; c++) {
+      const t = document.createElement("div");
+      t.className = "tile" + (g ? " " + g.marks[c] : "");
+      t.textContent = g ? g.word[c] : "";
+      row.appendChild(t);
+    }
+    board.appendChild(row);
+  }
+  if (game.status === "won") {
+    $("msg").textContent = `You got it! Score: ${game.score}`;
+  } else if (game.status === "lost") {
+    $("msg").textContent = `Out of guesses. The word was ${game.answer.toUpperCase()}.`;
+  }
+  $("guess").hidden = game.status !== "playing";
+  if (game.status !== "playing") { $("start").hidden = false; loadLeaders(); }
+}
+
+async function api(path, opts) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || "Something went wrong");
+  return data;
+}
+
+async function loadLeaders() {
+  const rows = await api("/api/leaderboard");
+  $("leaders").innerHTML = rows.map(r => `<li>${r.player.replace(/</g,"&lt;")} - ${r.score}</li>`).join("");
+}
+
+$("start").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    const game = await api("/api/games", { method: "POST", body: JSON.stringify({ player: $("player").value }) });
+    gameId = game.id;
+    $("msg").textContent = "Guess the five-letter word.";
+    $("board").hidden = false;
+    $("start").hidden = true;
+    render(game);
+    $("word").focus();
+  } catch (err) { $("msg").textContent = err.message; }
+});
+
+$("guess").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    const game = await api(`/api/games/${gameId}/guesses`, { method: "POST", body: JSON.stringify({ word: $("word").value }) });
+    $("word").value = "";
+    $("msg").textContent = "";
+    render(game);
+  } catch (err) { $("msg").textContent = err.message; }
+});
+
+loadLeaders();
+</script>
+</body>
+</html>
