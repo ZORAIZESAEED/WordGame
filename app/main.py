@@ -11,7 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import game as logic
-from .db import Base, engine, get_db
+from .db import engine, get_db
+from .migrate import upgrade_to_head
 from .models import Game, Guess
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -19,8 +20,7 @@ STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Fine for a small project. Swap for Alembic migrations later.
-    Base.metadata.create_all(engine)
+    upgrade_to_head(engine)
     yield
 
 
