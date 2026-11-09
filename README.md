@@ -3,7 +3,7 @@
 [![CI](https://github.com/ZORAIZESAEED/WordGame/actions/workflows/ci.yml/badge.svg)](https://github.com/ZORAIZESAEED/WordGame/actions/workflows/ci.yml)
 
 A five-letter word guessing game: six tries, coloured hints after each guess, and a
-leaderboard. Under the hood it's a FastAPI backend with Postgres, a single-page frontend,
+leaderboard. Under the hood it's a FastAPI backend with Postgres, a mobile-first frontend,
 Docker, a GitHub Actions pipeline, and Terraform for running it on AWS.
 
 I built it as a learning project for backend and DevOps work, so the game is deliberately
@@ -48,6 +48,13 @@ After each guess every letter is marked:
 Win on the first guess for 600 points, down to 100 on the sixth. Daily wins go on today's
 leaderboard, and every win counts towards the all-time one.
 
+It's built for phones first: the tiles size themselves to the screen, there's an on-screen
+keyboard that colours in letters as you learn about them, and a physical keyboard works too.
+When a game ends you get your stats (games played, win rate, current and best daily streak,
+and how many guesses your wins took), a countdown to the next daily, and a **Share** button
+that copies a spoiler-free grid of coloured squares. Animations are switched off for anyone
+who has asked their device for reduced motion.
+
 ## API
 
 | Method | Path | What it does |
@@ -59,6 +66,7 @@ leaderboard, and every win counts towards the all-time one.
 | `GET` | `/api/games/{id}` | Current state of a game |
 | `POST` | `/api/games/{id}/guesses` | Guess a word: `{"word": "crane"}` |
 | `GET` | `/api/leaderboard?limit=10` | All-time top scores |
+| `GET` | `/api/players/{name}/stats` | Daily stats (played, win %, streaks, guess distribution) and practice totals |
 | `GET` | `/health` | Health check for load balancers and Docker |
 
 The answer is never sent while a game is in progress.
@@ -95,12 +103,23 @@ There's also an end-to-end smoke test that plays a round against a running serve
 python scripts/smoke_test.py
 ```
 
+And browser tests in `e2e/`, which start the app themselves (on a throwaway SQLite database)
+and play it in Chromium on a phone-sized screen: typing on the on-screen and real keyboards,
+error messages, winning, stats, sharing, resuming a daily, and fitting on a small phone.
+
+```bash
+pip install -r requirements-e2e.txt
+python -m playwright install chromium
+pytest e2e
+```
+
 ## CI
 
 Every push to `main` and every pull request runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 None of it needs AWS credentials or any other secret.
 
 - **test**: ruff, then the test suite on SQLite and again on a Postgres 16 service container
+- **e2e**: the browser tests, in headless Chromium
 - **terraform**: `fmt`, `validate`, and `terraform test`, which plans the AWS stack against mocked providers
 - **docker**: builds the image, starts the full compose stack, and runs the smoke test
 
@@ -148,8 +167,9 @@ hosts that run Docker.
 app/            FastAPI app: main.py (routes), game.py (rules), models.py, db.py, words.py
 app/data/       word lists: answers.txt (hand-picked) and allowed.txt (dictionary)
 app/migrations/ Alembic migrations, applied on startup by app/migrate.py
-static/         the frontend (one HTML file)
-tests/          pytest: game logic and API
+static/         the frontend: index.html, style.css, app.js (no build step, no libraries)
+tests/          pytest: game logic, API, stats, migrations, concurrency
+e2e/            browser tests with Playwright
 scripts/        smoke_test.py, an end-to-end check against a running server
 infra/          Terraform for AWS (not applied), with its own tests
 docs/           architecture notes and review
@@ -165,6 +185,7 @@ docs/           architecture notes and review
 - [x] Daily challenge (same word for everyone, one go per day) plus unlimited practice
 - [x] Database migrations with Alembic
 - [x] Simultaneous guesses can't get past the six-attempt limit
+- [x] Mobile-first UI: on-screen keyboard, animations, stats, streaks, sharing, browser tests
 - [ ] Low-cost live demo
 - [ ] CD: build, push and deploy on merge to main (GitHub OIDC, no stored keys)
 - [ ] Accounts

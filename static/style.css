@@ -1,0 +1,181 @@
+:root {
+  --bg: #121213;
+  --surface: #1c1c1e;
+  --fg: #f4f4f4;
+  --muted: #9a9b9c;
+  --line: #3a3a3c;
+  --correct: #538d4e;
+  --present: #b59f3b;
+  --absent: #3a3a3c;
+  --key: #818384;
+  /* Tiles shrink to fit narrow and short screens alike. */
+  --tile: min(62px, calc((100vw - 56px) / 5), calc((100dvh - 330px) / 6));
+  --gap: 5px;
+  --key-h: 56px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+/* Without this, rules like `display:flex` beat the hidden attribute and nothing hides. */
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font: inherit;
+  color: #fff;
+  background: var(--correct);
+  border: 0;
+  border-radius: 6px;
+  padding: 12px 18px;
+  cursor: pointer;
+  touch-action: manipulation; /* no double-tap zoom on phones */
+}
+button.secondary { background: var(--line); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+/* --- header ----------------------------------------------------------------- */
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  padding-top: max(6px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--line);
+}
+.top h1 { margin: 0; font-size: 1.5rem; letter-spacing: .08em; text-transform: uppercase; }
+.top h1 a { color: inherit; text-decoration: none; }
+.actions { display: flex; gap: 4px; }
+.icon { background: none; padding: 8px; line-height: 0; }
+.icon svg { width: 24px; height: 24px; fill: none; stroke: var(--fg); stroke-width: 1.8;
+            stroke-linecap: round; stroke-linejoin: round; }
+.icon svg .fill { fill: var(--fg); }
+
+/* --- start screen ------------------------------------------------------------ */
+main { flex: 1; display: flex; flex-direction: column; align-items: center; min-height: 0; }
+.start { margin: auto; width: min(360px, 100% - 32px); text-align: center; }
+.lead { font-size: 1.15rem; margin: 0 0 24px; }
+.start form { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.start label { color: var(--muted); font-size: .9rem; }
+.start input {
+  font: inherit; font-size: 1.1rem; padding: 12px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+}
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+.hint { color: var(--muted); font-size: .85rem; margin: 4px 0 0; text-align: center; }
+
+/* --- board ------------------------------------------------------------------- */
+.play { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        min-height: 0; width: 100%; }
+.mode-label { color: var(--muted); margin: 8px 0 12px; font-size: .95rem; }
+.board { display: grid; gap: var(--gap); }
+.row { display: grid; grid-template-columns: repeat(5, var(--tile)); gap: var(--gap); }
+.tile {
+  width: var(--tile); height: var(--tile);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 2px solid var(--line);
+  font-size: calc(var(--tile) * .55); font-weight: 700; text-transform: uppercase;
+  user-select: none;
+}
+.tile.filled { border-color: #565758; animation: pop .1s ease-out; }
+.tile.correct, .tile.present, .tile.absent { border-color: transparent; color: #fff; }
+.tile.correct { background: var(--correct); }
+.tile.present { background: var(--present); }
+.tile.absent  { background: var(--absent); }
+.tile.flip { animation: flip .5s ease-in-out; }
+.row.shake { animation: shake .4s; }
+.row.win .tile { animation: bounce .5s ease; }
+
+@keyframes pop { 50% { transform: scale(1.12); } }
+@keyframes flip { 0% { transform: rotateX(0); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0); } }
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); }
+}
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-20px); } 60% { transform: translateY(4px); } }
+
+/* --- on-screen keyboard ------------------------------------------------------ */
+.keyboard {
+  width: min(500px, 100%);
+  margin: 0 auto;
+  padding: 8px 6px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 8px;
+  user-select: none;
+}
+.key-row { display: flex; gap: 6px; justify-content: center; }
+.key-row.middle { padding: 0 5%; }
+.key {
+  flex: 1; height: var(--key-h); padding: 0;
+  background: var(--key); border-radius: 4px;
+  font-size: 1.1rem; font-weight: 700; text-transform: uppercase;
+}
+.key.wide { flex: 1.5; font-size: .75rem; }
+.key.correct { background: var(--correct); }
+.key.present { background: var(--present); }
+.key.absent  { background: var(--absent); }
+.key:active { filter: brightness(1.2); }
+
+/* --- toasts ------------------------------------------------------------------ */
+.toasts { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 20;
+          display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+.toast { background: var(--fg); color: var(--bg); font-weight: 700; padding: 12px 16px;
+         border-radius: 6px; transition: opacity .3s; max-width: calc(100vw - 32px); text-align: center; }
+.toast.leaving { opacity: 0; }
+
+/* --- dialogs ----------------------------------------------------------------- */
+dialog {
+  width: min(420px, 100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  background: var(--surface); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 20px 20px 24px;
+}
+dialog::backdrop { background: rgb(0 0 0 / .6); }
+dialog h2 { margin: 0 0 16px; text-align: center; text-transform: uppercase; letter-spacing: .05em; font-size: 1rem; }
+dialog h3 { margin: 20px 0 8px; font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; }
+.close { position: absolute; top: 8px; right: 8px; background: none; font-size: 1.6rem; line-height: 1; padding: 6px 10px; }
+.muted { color: var(--muted); }
+
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; gap: 4px; }
+.stat-grid strong { display: block; font-size: 2rem; font-weight: 500; }
+.stat-grid span { font-size: .75rem; color: var(--muted); }
+
+.distribution { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.distribution li { display: grid; grid-template-columns: 14px 1fr; gap: 6px; align-items: center; font-size: .9rem; }
+.distribution .bar { background: var(--line); color: #fff; padding: 2px 8px; text-align: right;
+                     min-width: 24px; font-weight: 700; }
+.distribution .bar.highlight { background: var(--correct); }
+
+.finished-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center;
+                    margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.next-daily { text-align: center; }
+.next-daily span { display: block; font-size: .8rem; color: var(--muted); }
+.next-daily strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.action-buttons { display: flex; flex-direction: column; gap: 8px; }
+
+.leaders { margin: 0; padding-left: 22px; color: var(--muted); }
+.leaders li { padding: 2px 0; }
+.leaders li span { color: var(--fg); }
+
+.example { display: flex; gap: 4px; margin: 12px 0 4px; }
+.example .tile { --tile: 40px; }
+
+/* Short phones (and landscape): smaller keys so the board keeps its room. */
+@media (max-height: 640px) { :root { --key-h: 46px; --tile: min(52px, calc((100vw - 56px) / 5), calc((100dvh - 290px) / 6)); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
