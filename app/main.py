@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,7 +27,8 @@ app = FastAPI(title="Word Game", version="0.1.0", lifespan=lifespan)
 
 
 class NewGame(BaseModel):
-    player: str = Field(min_length=1, max_length=32)
+    # Strip first, then check the length, so "   " is rejected instead of saved as "".
+    player: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)]
 
 
 class GuessIn(BaseModel):
@@ -81,7 +83,7 @@ def health():
 
 @app.post("/api/games", response_model=GameOut, status_code=201)
 def new_game(body: NewGame, db: Session = Depends(get_db)):
-    g = Game(player=body.player.strip(), secret=logic.pick_word())
+    g = Game(player=body.player, secret=logic.pick_word())
     db.add(g)
     db.commit()
     return _to_out(g)

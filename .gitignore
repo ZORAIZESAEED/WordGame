@@ -8,3 +8,7 @@ __pycache__/
 .terraform/
 *.tfstate
 *.tfstate.*
+.terraform.tfstate.lock.info
+*.tfvars
+!*.tfvars.example
+infra/backend.hcl

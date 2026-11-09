@@ -21,6 +21,12 @@ services:
       DATABASE_URL: postgresql+psycopg://wordgame:wordgame@db:5432/wordgame
     ports:
       - "8000:8000"
+    # The slim image has no curl, so check /health with Python.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     depends_on:
       db:
         condition: service_healthy

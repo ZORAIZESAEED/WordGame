@@ -1,0 +1,6 @@
+# Copy to backend.hcl and fill in the bucket from `terraform output` in infra/bootstrap.
+bucket       = "wordgame-tfstate-123456789012"
+key          = "wordgame/main.tfstate"
+region       = "eu-west-2"
+encrypt      = true
+use_lockfile = true
