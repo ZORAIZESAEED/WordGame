@@ -64,6 +64,22 @@ function buildBoard() {
 
 const rowEl = (r) => $("board").children[r];
 
+// Size the tiles to the space that's actually left between the header and the keyboard.
+// CSS alone can only guess how tall those are, and fonts differ between phones, so a
+// guess that fits on one device can push the board under the keyboard on another.
+function fitBoard() {
+  const play = $("play");
+  if (play.hidden) return;
+  const label = $("mode-label");
+  const css = getComputedStyle(label);
+  const labelH = label.offsetHeight + parseFloat(css.marginTop) + parseFloat(css.marginBottom);
+  const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--gap")) || 5;
+  const height = play.clientHeight - labelH - 8; // a little breathing room above the keys
+  const width = play.clientWidth - 32;
+  const tile = Math.floor(Math.min(62, (width - gap * (LEN - 1)) / LEN, (height - gap * (MAX - 1)) / MAX));
+  document.documentElement.style.setProperty("--tile", `${Math.max(tile, 24)}px`);
+}
+
 function paintRow(r, word, marks) {
   const row = rowEl(r);
   [...row.children].forEach((tile, c) => {
@@ -220,6 +236,7 @@ function showGame(game) {
   buildBoard();
   renderBoard();
   paintKeys();
+  fitBoard();
   if (game.status !== "playing") openStats();
 }
 
@@ -351,6 +368,9 @@ async function openBoards() {
 
 function init() {
   buildKeyboard();
+  // Rotating the phone or the address bar sliding away changes the space available.
+  window.addEventListener("resize", fitBoard);
+  window.visualViewport?.addEventListener("resize", fitBoard);
   state.player = store.get("player");
   $("player").value = state.player;
 

@@ -7,6 +7,7 @@ string is matched literally.
 import itertools
 import re
 
+import pytest
 from playwright.sync_api import Page, expect
 
 from app import daily
@@ -143,8 +144,22 @@ def test_leaderboard_shows_names_as_text(phone):
     assert board.locator("b").count() == 0
 
 
-def test_fits_a_small_phone_without_scrolling(page_for):
+# Larger text makes the header taller, which squeezes the board. Fonts differ between
+# devices (and between this machine and CI), so the layout has to cope with both.
+BIGGER_TEXT = """
+document.addEventListener("DOMContentLoaded", () => {
+  const s = document.createElement("style");
+  s.textContent = "html { font-size: 18.5px } .top h1 { line-height: 1.6 }";
+  document.head.append(s);
+});
+"""
+
+
+@pytest.mark.parametrize("bigger_text", [False, True], ids=["normal-text", "bigger-text"])
+def test_fits_a_small_phone_without_scrolling(page_for, bigger_text):
     page = page_for("iPhone SE")
+    if bigger_text:
+        page.add_init_script(BIGGER_TEXT)
     start(page, mode="practice")
     fits = page.evaluate(
         """() => {
