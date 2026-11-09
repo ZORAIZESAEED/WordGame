@@ -4,16 +4,28 @@ Owner: Zoraize Saeed. Goal: a small, finished project that shows AWS + DevOps sk
 (FastAPI app, Docker, CI/CD, Terraform on AWS) for UK junior AI/software engineer job applications.
 The game is a vehicle for the infrastructure work, so keep the app simple.
 
+## Ground rules (from the owner)
+- Never run `terraform apply` or create any paid AWS resource without the owner's explicit
+  approval in the conversation. `terraform validate`, `terraform test` and `fmt` are fine.
+- Avoid AWS charges for now. The game must run fully locally (Docker + Postgres), and CI must
+  keep passing without AWS credentials or other secrets.
+- Priorities: game functionality, code quality, tests, docs. A free or low-cost live demo
+  may come later (options in `docs/architecture.md`).
+- Changes go through pull requests, not straight to `main`.
+
 ## Current state
 - FastAPI backend in `app/` (game logic in `game.py`, no web code in it), SQLAlchemy models,
   SQLite locally and Postgres via `DATABASE_URL`.
 - Static frontend in `static/index.html`.
-- 16 passing tests in `tests/`, ruff lint config in `pyproject.toml`. `pythonpath = ["."]`
-  in the pytest config is what lets a bare `pytest` import `app`, so keep it.
-- Dockerfile + docker-compose (api + Postgres). The image builds, passes the `/health`
-  smoke test, and works against Postgres 16.
-- GitHub Actions CI in `.github/workflows/ci.yml` (lint, test, build image, smoke test).
-  Green on `main`. Also runs `terraform fmt`, `validate` and `terraform test` on `infra/`.
+- Tests in `tests/` run on SQLite by default; set `TEST_DATABASE_URL` for Postgres (never
+  `DATABASE_URL`: the tests drop all tables). `pythonpath = ["."]` in the pytest config is what
+  lets a bare `pytest` import `app`, so keep it. `app/words.py` isn't `ruff format`-clean on
+  purpose (hand-laid-out grid); CI only runs `ruff check`.
+- Dockerfile + docker-compose (api + Postgres, both with healthchecks). `scripts/smoke_test.py`
+  plays a round against a running server.
+- GitHub Actions CI in `.github/workflows/ci.yml`: ruff + pytest on SQLite and Postgres;
+  Terraform fmt/validate/test (mocked, no credentials); compose stack + smoke test.
+- `docs/architecture.md` has the architecture review, cost table and open suggestions.
 - Terraform in `infra/` (see `infra/README.md`): `bootstrap/` = budget alert + S3 state bucket;
   main stack = VPC, ECR, ECS Fargate, RDS, ALB. Validated and plan-tested with mocks,
   NOT applied to AWS yet. No NAT gateway on purpose (cost); tasks get public IPs.
@@ -35,9 +47,10 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Full stack: `docker compose up --build`
 
 ## Next steps, in order
-1. Apply `infra/` to AWS, following `infra/README.md` (bootstrap first, for the budget).
-2. CD workflow: build and push to ECR, deploy to ECS on merge to main, using GitHub OIDC
-   (no long-lived AWS keys stored in the repo).
+1. Game and code quality: bigger word list / daily word, Alembic migrations, row locking on
+   guesses, pinned dependencies (see suggestions in `docs/architecture.md`).
+2. Later, with approval: a free or low-cost live demo. Applying `infra/` (bootstrap first, for
+   the budget) and a CD workflow with GitHub OIDC only if the owner asks.
 3. Later: daily word, accounts, RL opponent (links to the user's MSc research on word acquisition).
 
 ## Preferences

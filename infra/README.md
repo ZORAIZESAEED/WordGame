@@ -1,5 +1,11 @@
 # Infrastructure
 
+> **Not deployed, and costs money if you deploy it.** Everything here has been checked with
+> `terraform validate` and `terraform test` (mocked AWS, run in CI), but never applied.
+> `terraform apply` on the main stack creates resources that bill by the hour, around
+> $50–60 a month in total. See [`../docs/architecture.md`](../docs/architecture.md) for
+> cheaper options.
+
 Terraform for running Word Game on AWS (London, `eu-west-2`). Two stacks:
 
 - `bootstrap/` runs once, with local state. It sets up a monthly **budget alert** on the
