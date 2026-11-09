@@ -92,9 +92,10 @@ That's a lot for a portfolio piece nobody's using. Hence the rule for now: don't
 
 6. **Migrations.** Tables are created with `create_all` at startup. That's fine until the schema
    changes (daily word, accounts). Adding Alembic then would be a good thing to show.
-7. **Concurrent guesses.** Two requests for the same game at the same moment could both pass the
-   "six attempts" check. Locking the row (`with_for_update()` in SQLAlchemy) fixes it on Postgres.
-   Low priority for a single-player game.
+7. **Concurrent guesses.** Done. Requests sent together could each pass the "six attempts"
+   check and save up to eight guesses. A guess now locks the game row (`SELECT ... FOR UPDATE`
+   on Postgres; `BEGIN IMMEDIATE` on SQLite), and `tests/test_concurrency.py` fires eight
+   threads at once to prove it.
 8. **Pinned dependencies.** `requirements*.txt` use version ranges, so CI can pick up a new
    release overnight. A lock file (`uv pip compile` or `pip-tools`) makes builds repeatable.
 9. **Word list.** Done: 864 answers and about 4,700 accepted guesses, loaded from text files.
