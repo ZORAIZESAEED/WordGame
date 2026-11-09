@@ -57,6 +57,7 @@ The answer is never sent while a game is in progress.
 
 ```bash
 ruff check .            # lint
+ruff format --check .   # formatting
 pytest -q               # unit and API tests on SQLite
 ```
 
@@ -86,6 +87,14 @@ None of it needs AWS credentials or any other secret.
 - **terraform**: `fmt`, `validate`, and `terraform test`, which plans the AWS stack against mocked providers
 - **docker**: builds the image, starts the full compose stack, and runs the smoke test
 
+## Word lists
+
+Answers come from `app/data/answers.txt`: 864 common, family-friendly words in British
+spelling, picked by hand. Guesses are checked against `app/data/allowed.txt`, about 4,700
+five-letter words from the British and American lists in
+[SCOWL](http://wordlist.aspell.net/) (Kevin Atkinson and contributors), so either
+spelling works. SCOWL's license is in `app/data/SCOWL-LICENSE.txt`.
+
 ## Deployment
 
 **It isn't deployed right now, on purpose.** The AWS setup in [`infra/`](infra/) works on
@@ -104,6 +113,7 @@ hosts that run Docker.
 
 ```
 app/            FastAPI app: main.py (routes), game.py (rules), models.py, db.py, words.py
+app/data/       word lists: answers.txt (hand-picked) and allowed.txt (dictionary)
 static/         the frontend (one HTML file)
 tests/          pytest: game logic and API
 scripts/        smoke_test.py, an end-to-end check against a running server
@@ -117,7 +127,8 @@ docs/           architecture notes and review
 - [x] Dockerfile and compose (API + Postgres)
 - [x] CI: lint, tests on SQLite and Postgres, compose smoke test
 - [x] Terraform for AWS: VPC, ECR, ECS Fargate, RDS, ALB, budget alert (written and tested, not applied)
-- [ ] Bigger word list and a daily word
+- [x] Bigger word list: 864 hand-picked answers, about 4,700 accepted guesses
+- [ ] Daily word, plus unlimited practice
 - [ ] Database migrations with Alembic
 - [ ] Low-cost live demo
 - [ ] CD: build, push and deploy on merge to main (GitHub OIDC, no stored keys)

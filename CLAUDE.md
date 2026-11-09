@@ -19,8 +19,9 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Static frontend in `static/index.html`.
 - Tests in `tests/` run on SQLite by default; set `TEST_DATABASE_URL` for Postgres (never
   `DATABASE_URL`: the tests drop all tables). `pythonpath = ["."]` in the pytest config is what
-  lets a bare `pytest` import `app`, so keep it. `app/words.py` isn't `ruff format`-clean on
-  purpose (hand-laid-out grid); CI only runs `ruff check`.
+  lets a bare `pytest` import `app`, so keep it. CI runs `ruff check` and `ruff format --check`.
+- Word lists live in `app/data/`: `answers.txt` (hand-picked, British spelling, family-friendly)
+  and `allowed.txt` (SCOWL British + American five-letter words; keep `SCOWL-LICENSE.txt` with it).
 - Dockerfile + docker-compose (api + Postgres, both with healthchecks). `scripts/smoke_test.py`
   plays a round against a running server.
 - GitHub Actions CI in `.github/workflows/ci.yml`: ruff + pytest on SQLite and Postgres;
@@ -47,8 +48,10 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Full stack: `docker compose up --build`
 
 ## Next steps, in order
-1. Game and code quality: bigger word list / daily word, Alembic migrations, row locking on
-   guesses, pinned dependencies (see suggestions in `docs/architecture.md`).
+1. One branch and one PR (with tests) per feature, in this order: row locking so concurrent
+   guesses can't exceed six attempts; Alembic migrations; daily challenge + practice mode;
+   mobile UI, animations, on-screen keyboard, stats and sharing. Pinned dependencies when
+   convenient (see `docs/architecture.md`).
 2. Later, with approval: a free or low-cost live demo. Applying `infra/` (bootstrap first, for
    the budget) and a CD workflow with GitHub OIDC only if the owner asks.
 3. Later: daily word, accounts, RL opponent (links to the user's MSc research on word acquisition).
