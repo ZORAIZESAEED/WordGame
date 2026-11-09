@@ -33,25 +33,42 @@ uvicorn app.main:app --reload
 
 ## How to play
 
-Enter a name and start guessing. After each guess every letter is marked:
+Enter a name and pick a mode:
+
+- **Daily**: everyone gets the same word, and there's a new one at midnight UTC. One go per
+  name per day; come back later with the same name and you pick up where you left off.
+- **Practice**: a random word every time, as many games as you like.
+
+After each guess every letter is marked:
 
 - **green**: right letter, right place
 - **yellow**: in the word, but somewhere else
 - **grey**: not in the word (repeated letters are only marked as often as they appear)
 
-Win on the first guess for 600 points, down to 100 on the sixth. Wins go on the leaderboard.
+Win on the first guess for 600 points, down to 100 on the sixth. Daily wins go on today's
+leaderboard, and every win counts towards the all-time one.
 
 ## API
 
 | Method | Path | What it does |
 | --- | --- | --- |
-| `POST` | `/api/games` | Start a game: `{"player": "name"}` |
+| `POST` | `/api/games` | Start a practice game: `{"player": "name"}` |
+| `GET` | `/api/daily` | Today's puzzle number and date (never the word) |
+| `POST` | `/api/daily` | Start today's daily, or resume it: `{"player": "name"}`. 201 when new, 200 when resuming |
+| `GET` | `/api/daily/leaderboard?limit=10` | Today's daily winners |
 | `GET` | `/api/games/{id}` | Current state of a game |
 | `POST` | `/api/games/{id}/guesses` | Guess a word: `{"word": "crane"}` |
-| `GET` | `/api/leaderboard?limit=10` | Top scores |
+| `GET` | `/api/leaderboard?limit=10` | All-time top scores |
 | `GET` | `/health` | Health check for load balancers and Docker |
 
 The answer is never sent while a game is in progress.
+
+## Configuration
+
+| Variable | Default | What it's for |
+| --- | --- | --- |
+| `DATABASE_URL` | `sqlite:///./wordgame.db` | Where games are stored. Compose sets it to its Postgres. |
+| `DAILY_WORD_SECRET` | a fixed dev value | Seeds the daily-word schedule. Set your own anywhere public, or people reading this repo can work out upcoming words. |
 
 ## Tests
 
@@ -145,7 +162,7 @@ docs/           architecture notes and review
 - [x] CI: lint, tests on SQLite and Postgres, compose smoke test
 - [x] Terraform for AWS: VPC, ECR, ECS Fargate, RDS, ALB, budget alert (written and tested, not applied)
 - [x] Bigger word list: 864 hand-picked answers, about 4,700 accepted guesses
-- [ ] Daily word, plus unlimited practice
+- [x] Daily challenge (same word for everyone, one go per day) plus unlimited practice
 - [x] Database migrations with Alembic
 - [x] Simultaneous guesses can't get past the six-attempt limit
 - [ ] Low-cost live demo
