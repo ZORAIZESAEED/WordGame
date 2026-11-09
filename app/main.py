@@ -8,11 +8,11 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, StringConstraints, field_validator
 from pydantic_core import PydanticCustomError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import daily
+from . import daily, stats
 from . import game as logic
 from .db import engine, get_db
 from .migrate import upgrade_to_head
@@ -30,9 +30,12 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Word Game", version="0.1.0", lifespan=lifespan)
 
 
+PlayerName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)]
+
+
 class NewGame(BaseModel):
     # Strip first, then check the length, so "   " is rejected instead of saved as "".
-    player: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)]
+    player: PlayerName
 
 
 class GuessIn(BaseModel):
@@ -74,6 +77,26 @@ class LeaderboardRow(BaseModel):
 class DailyInfo(BaseModel):
     date: date
     number: int
+
+
+class DailyStatsOut(BaseModel):
+    played: int
+    wins: int
+    win_rate: int
+    current_streak: int
+    max_streak: int
+    distribution: list[int]  # wins in 1 guess, 2 guesses, ... 6 guesses
+
+
+class PracticeStatsOut(BaseModel):
+    played: int
+    wins: int
+
+
+class PlayerStats(BaseModel):
+    player: str
+    daily: DailyStatsOut
+    practice: PracticeStatsOut
 
 
 def _to_out(g: Game) -> GameOut:
@@ -159,6 +182,31 @@ def daily_leaderboard(limit: int = 10, db: Session = Depends(get_db)):
         .limit(limit)
     ).all()
     return [LeaderboardRow(player=p, score=s) for p, s in rows]
+
+
+@app.get("/api/players/{player}/stats", response_model=PlayerStats)
+def player_stats(player: PlayerName, db: Session = Depends(get_db)):
+    """Finished games only: a game in progress doesn't count yet."""
+    attempts = func.count(Guess.id)
+    rows = db.execute(
+        select(Game.mode, Game.daily_date, Game.status, attempts)
+        .outerjoin(Guess, Guess.game_id == Game.id)
+        .where(Game.player == player, Game.status.in_(("won", "lost")))
+        .group_by(Game.id)
+    ).all()
+
+    daily_results = [
+        stats.DailyResult(day=day, won=status == "won", attempts=n)
+        for mode, day, status, n in rows
+        if mode == "daily"
+    ]
+    practice = [status for mode, _, status, _ in rows if mode == "practice"]
+    d = stats.daily_stats(daily_results, today=daily.today())
+    return PlayerStats(
+        player=player,
+        daily=DailyStatsOut(**vars(d)),
+        practice=PracticeStatsOut(played=len(practice), wins=practice.count("won")),
+    )
 
 
 @app.get("/api/games/{game_id}", response_model=GameOut)

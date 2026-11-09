@@ -2,147 +2,107 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121213">
+<meta name="description" content="Guess the five-letter word in six tries. A new daily word every day, plus unlimited practice.">
 <title>Word Game</title>
-<style>
-  :root { --bg:#121213; --fg:#f4f4f4; --muted:#818384; --ok:#538d4e; --mid:#b59f3b; --no:#3a3a3c; }
-  * { box-sizing: border-box; }
-  /* Without this, `form { display:flex }` beats the hidden attribute and nothing hides. */
-  [hidden] { display: none !important; }
-  body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif;
-         display:flex; flex-direction:column; align-items:center; padding:24px 12px; }
-  h1 { margin:0 0 4px; letter-spacing:.1em; }
-  #msg { min-height:1.4em; color:var(--muted); margin:8px 0 16px; text-align:center; }
-  #board { display:grid; grid-template-rows:repeat(6,1fr); gap:6px; margin-bottom:16px; }
-  .row { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
-  .tile { width:56px; height:56px; border:2px solid var(--no); display:flex; align-items:center;
-          justify-content:center; font-size:1.8rem; font-weight:700; text-transform:uppercase; }
-  .tile.filled { border-color:var(--muted); }
-  .tile.correct { background:var(--ok); border-color:var(--ok); }
-  .tile.present { background:var(--mid); border-color:var(--mid); }
-  .tile.absent  { background:var(--no);  border-color:var(--no); }
-  form { display:flex; gap:8px; margin-bottom:8px; }
-  input { padding:10px; font-size:1rem; border-radius:6px; border:1px solid var(--muted);
-          background:#1c1c1e; color:var(--fg); text-transform:uppercase; }
-  button { padding:10px 16px; font-size:1rem; border-radius:6px; border:0; background:var(--ok);
-           color:#fff; cursor:pointer; }
-  button:disabled { opacity:.5; cursor:default; }
-  button.secondary { background:var(--no); }
-  #board-wrap { margin-top:20px; width:260px; }
-  ol { padding-left:20px; color:var(--muted); }
-</style>
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/app.js" defer></script>
 </head>
 <body>
-  <h1>WORD GAME</h1>
-  <div id="msg">Enter a name to start.</div>
+  <header class="top">
+    <button class="icon" id="help-btn" type="button" aria-label="How to play">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .8c0 1.8-2.5 2.2-2.5 4"/><circle cx="12" cy="17.2" r=".6" class="fill"/></svg>
+    </button>
+    <h1><a href="/" title="Back to the start">Word Game</a></h1>
+    <div class="actions">
+      <button class="icon" id="boards-btn" type="button" aria-label="Leaderboards">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4"/></svg>
+      </button>
+      <button class="icon" id="stats-btn" type="button" aria-label="Statistics">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V12M10 20V6M15 20v-9M20 20V9M3 20h18"/></svg>
+      </button>
+    </div>
+  </header>
 
-  <form id="start">
-    <input id="player" placeholder="Your name" maxlength="32" autocomplete="off" required>
-    <button value="daily" id="daily-btn">Daily</button>
-    <button value="practice" class="secondary">Practice</button>
-  </form>
+  <main>
+    <section id="start" class="start">
+      <p class="lead">Guess the five-letter word in six tries.</p>
+      <form id="start-form">
+        <label for="player">Your name</label>
+        <input id="player" name="player" maxlength="32" autocomplete="nickname" autocapitalize="words" required>
+        <div class="choices">
+          <button id="daily-btn" value="daily">Daily</button>
+          <button value="practice" class="secondary">Practice</button>
+        </div>
+        <p class="hint">Daily: same word for everyone, one go a day. Practice: as many as you like.</p>
+      </form>
+    </section>
 
-  <div id="board" hidden></div>
+    <section id="play" class="play" hidden>
+      <p id="mode-label" class="mode-label"></p>
+      <div id="board" class="board" role="grid" aria-label="Your guesses"></div>
+    </section>
+  </main>
 
-  <form id="guess" hidden>
-    <input id="word" placeholder="5 letters" maxlength="5" minlength="5" autocomplete="off" required>
-    <button>Guess</button>
-  </form>
+  <div id="keyboard" class="keyboard" role="group" aria-label="Keyboard" hidden></div>
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
 
-  <div id="board-wrap">
-    <h3 id="daily-title">Today's daily</h3>
-    <ol id="daily-leaders"></ol>
-    <h3>All-time top scores</h3>
-    <ol id="leaders"></ol>
-  </div>
+  <dialog id="stats-dialog" aria-labelledby="stats-title">
+    <button class="close" type="button" aria-label="Close">&times;</button>
+    <h2 id="stats-title">Statistics</h2>
+    <p id="stats-empty" class="muted" hidden>Play a daily game to start your stats.</p>
+    <div id="stats-body">
+      <div class="stat-grid">
+        <div><strong id="st-played">0</strong><span>Played</span></div>
+        <div><strong id="st-rate">0</strong><span>Win %</span></div>
+        <div><strong id="st-streak">0</strong><span>Current streak</span></div>
+        <div><strong id="st-best">0</strong><span>Best streak</span></div>
+      </div>
+      <h3>Guess distribution</h3>
+      <ol id="distribution" class="distribution"></ol>
+      <p id="practice-line" class="muted"></p>
+    </div>
+    <div id="finished-actions" class="finished-actions" hidden>
+      <div class="next-daily">
+        <span>Next daily in</span>
+        <strong id="countdown">--:--:--</strong>
+      </div>
+      <div class="action-buttons">
+        <button id="share-btn" type="button">Share</button>
+        <button id="again-btn" type="button" class="secondary">Practice</button>
+      </div>
+    </div>
+  </dialog>
 
-<script>
-const $ = (id) => document.getElementById(id);
-let gameId = null;
+  <dialog id="boards-dialog" aria-labelledby="boards-title">
+    <button class="close" type="button" aria-label="Close">&times;</button>
+    <h2 id="boards-title">Leaderboards</h2>
+    <h3 id="daily-board-title">Today's daily</h3>
+    <ol id="daily-leaders" class="leaders"></ol>
+    <h3>All time</h3>
+    <ol id="leaders" class="leaders"></ol>
+  </dialog>
 
-function render(game) {
-  const board = $("board");
-  board.innerHTML = "";
-  for (let r = 0; r < game.max_attempts; r++) {
-    const row = document.createElement("div");
-    row.className = "row";
-    const g = game.guesses[r];
-    for (let c = 0; c < 5; c++) {
-      const t = document.createElement("div");
-      t.className = "tile" + (g ? " " + g.marks[c] : "");
-      t.textContent = g ? g.word[c] : "";
-      row.appendChild(t);
-    }
-    board.appendChild(row);
-  }
-  if (game.status === "playing") {
-    $("msg").textContent = game.mode === "daily"
-      ? `Daily #${game.daily_number}: guess the five-letter word.`
-      : "Practice: guess the five-letter word.";
-  } else if (game.status === "won") {
-    $("msg").textContent = `You got it! Score: ${game.score}`;
-  } else if (game.status === "lost") {
-    $("msg").textContent = `Out of guesses. The word was ${game.answer.toUpperCase()}.`;
-  }
-  $("guess").hidden = game.status !== "playing";
-  if (game.status !== "playing") { $("start").hidden = false; loadLeaders(); }
-}
-
-async function api(path, opts) {
-  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    // FastAPI sends a string for our own errors and a list for validation errors.
-    const d = data.detail;
-    const msg = Array.isArray(d) ? d.map(e => e.msg).join(", ") : d;
-    throw new Error(msg || "Something went wrong");
-  }
-  return data;
-}
-
-function fillList(list, rows) {
-  list.replaceChildren(...rows.map(r => {
-    const li = document.createElement("li");
-    li.textContent = `${r.player} - ${r.score}`;  // textContent, so names can't inject HTML
-    return li;
-  }));
-}
-
-async function loadLeaders() {
-  const [today, allTime, info] = await Promise.all([
-    api("/api/daily/leaderboard"), api("/api/leaderboard"), api("/api/daily"),
-  ]);
-  fillList($("daily-leaders"), today);
-  fillList($("leaders"), allTime);
-  $("daily-title").textContent = `Daily #${info.number}`;
-  $("daily-btn").textContent = `Daily #${info.number}`;
-}
-
-$("start").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  // Which button was pressed: daily resumes today's game if this name already started it.
-  const path = e.submitter?.value === "practice" ? "/api/games" : "/api/daily";
-  try {
-    const game = await api(path, { method: "POST", body: JSON.stringify({ player: $("player").value }) });
-    gameId = game.id;
-    $("board").hidden = false;
-    $("start").hidden = true;
-    render(game);
-    $("word").focus();
-  } catch (err) { $("msg").textContent = err.message; }
-});
-
-$("guess").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  try {
-    const game = await api(`/api/games/${gameId}/guesses`, { method: "POST", body: JSON.stringify({ word: $("word").value }) });
-    $("word").value = "";
-    $("msg").textContent = "";
-    render(game);
-  } catch (err) { $("msg").textContent = err.message; }
-});
-
-loadLeaders();
-</script>
+  <dialog id="help-dialog" aria-labelledby="help-title">
+    <button class="close" type="button" aria-label="Close">&times;</button>
+    <h2 id="help-title">How to play</h2>
+    <p>Guess the five-letter word in six tries. Each guess must be a real word. After you
+      guess, the tiles change colour to show how close you were.</p>
+    <div class="example" aria-label="Example: C in the right place">
+      <span class="tile correct">c</span><span class="tile">r</span><span class="tile">a</span><span class="tile">n</span><span class="tile">e</span>
+    </div>
+    <p><strong>Green</strong>: right letter, right place.</p>
+    <div class="example" aria-label="Example: L in the word but in the wrong place">
+      <span class="tile">s</span><span class="tile present">l</span><span class="tile">a</span><span class="tile">t</span><span class="tile">e</span>
+    </div>
+    <p><strong>Yellow</strong>: in the word, somewhere else.</p>
+    <div class="example" aria-label="Example: U not in the word">
+      <span class="tile">h</span><span class="tile">o</span><span class="tile absent">u</span><span class="tile">s</span><span class="tile">e</span>
+    </div>
+    <p><strong>Grey</strong>: not in the word.</p>
+    <p class="muted">The daily word is the same for everyone and changes at midnight UTC.
+      Practice gives you a fresh word whenever you want one.</p>
+  </dialog>
 </body>
 </html>
