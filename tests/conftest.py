@@ -14,10 +14,23 @@ from app.main import app  # noqa: E402
 from app.models import Game  # noqa: E402
 
 
+def reset_database() -> None:
+    """Drop everything, including Alembic's bookkeeping table, so migrations start from zero."""
+    Base.metadata.drop_all(engine)
+    with engine.begin() as conn:
+        conn.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+
+
+@pytest.fixture()
+def reset_db():
+    """For tests that drive migrations themselves: call it to start from an empty database."""
+    return reset_database
+
+
 @pytest.fixture()
 def client():
-    Base.metadata.drop_all(engine)
-    with TestClient(app) as c:  # lifespan creates tables
+    reset_database()
+    with TestClient(app) as c:  # app startup runs the migrations
         yield c
 
 

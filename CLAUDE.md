@@ -23,6 +23,10 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Guessing locks the game row (`_get_game(..., lock=True)`); SQLite uses `BEGIN IMMEDIATE`
   (see `app/db.py`). Keep any new read-then-write endpoint behind the same lock.
   `tests/test_concurrency.py` checks it with real threads.
+- Schema changes need an Alembic migration (`alembic revision --autogenerate --rev-id 000N -m ...`,
+  then review it). The app runs `upgrade_to_head` on startup (`app/migrate.py`).
+  `tests/test_migrations.py` fails if models and migrations differ. The test reset also drops
+  `alembic_version`.
 - Word lists live in `app/data/`: `answers.txt` (hand-picked, British spelling, family-friendly)
   and `allowed.txt` (SCOWL British + American five-letter words; keep `SCOWL-LICENSE.txt` with it).
 - Dockerfile + docker-compose (api + Postgres, both with healthchecks). `scripts/smoke_test.py`
@@ -51,7 +55,7 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Full stack: `docker compose up --build`
 
 ## Next steps, in order
-1. One branch and one PR (with tests) per feature, in this order: Alembic migrations; daily challenge + practice mode;
+1. One branch and one PR (with tests) per feature, in this order: daily challenge + practice mode;
    mobile UI, animations, on-screen keyboard, stats and sharing. Pinned dependencies when
    convenient (see `docs/architecture.md`).
 2. Later, with approval: a free or low-cost live demo. Applying `infra/` (bootstrap first, for
