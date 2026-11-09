@@ -81,6 +81,30 @@ def test_rejects_words_not_in_list(client):
     assert r.status_code == 422
 
 
+@pytest.mark.parametrize("word", ["cr4ne", "cra e", "crané", "cran", "cranes", ""])
+def test_rejects_guesses_that_are_not_five_letters(client, word):
+    gid = client.post("/api/games", json={"player": "p"}).json()["id"]
+    r = client.post(f"/api/games/{gid}/guesses", json={"word": word})
+    assert r.status_code == 422
+    assert r.json()["detail"][0]["msg"] == "Guesses must be five letters, A to Z"
+    # A rejected guess doesn't use up an attempt.
+    assert client.get(f"/api/games/{gid}").json()["attempts_used"] == 0
+
+
+def test_guess_is_trimmed(client):
+    gid = client.post("/api/games", json={"player": "p"}).json()["id"]
+    _force_secret(gid, "crane")
+    body = client.post(f"/api/games/{gid}/guesses", json={"word": "  crane "}).json()
+    assert body["status"] == "won"
+
+
+def test_accepts_less_common_dictionary_words(client):
+    gid = client.post("/api/games", json={"player": "p"}).json()["id"]
+    _force_secret(gid, "crane")
+    r = client.post(f"/api/games/{gid}/guesses", json={"word": "fjord"})
+    assert r.status_code == 200
+
+
 def test_player_name_is_trimmed(client):
     r = client.post("/api/games", json={"player": "  zoraize  "})
     assert r.status_code == 201

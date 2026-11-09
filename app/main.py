@@ -5,7 +5,8 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, StringConstraints, field_validator
+from pydantic_core import PydanticCustomError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -32,7 +33,16 @@ class NewGame(BaseModel):
 
 
 class GuessIn(BaseModel):
-    word: str = Field(min_length=5, max_length=5)
+    word: str
+
+    @field_validator("word")
+    @classmethod
+    def five_letters(cls, v: str) -> str:
+        v = v.strip().lower()
+        if len(v) != logic.WORD_LENGTH or not (v.isascii() and v.isalpha()):
+            # Custom error type so the message reaches the player without a "Value error," prefix.
+            raise PydanticCustomError("five_letters", "Guesses must be five letters, A to Z")
+        return v
 
 
 class GuessOut(BaseModel):
@@ -100,7 +110,7 @@ def make_guess(game_id: str, body: GuessIn, db: Session = Depends(get_db)):
     if g.status != "playing":
         raise HTTPException(409, "Game is already over")
 
-    word = body.word.lower()
+    word = body.word  # already trimmed and lowercased by GuessIn
     if not logic.is_valid_guess(word):
         raise HTTPException(422, "Not in the word list")
 

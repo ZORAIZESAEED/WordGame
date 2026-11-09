@@ -1,7 +1,7 @@
 import pytest
 
 from app.game import evaluate_guess, is_valid_guess, score_for_win
-from app.words import ANSWERS
+from app.words import ANSWERS, DATA_DIR, VALID_GUESSES, load_words
 
 
 def test_all_correct():
@@ -50,3 +50,32 @@ def test_every_answer_is_five_letters_and_guessable():
     for w in ANSWERS:
         assert len(w) == 5 and w.isalpha() and w.islower()
         assert is_valid_guess(w)
+
+
+def test_answer_list_is_big_enough_and_has_no_duplicates():
+    assert len(ANSWERS) >= 500
+    assert len(set(ANSWERS)) == len(ANSWERS)
+
+
+def test_answers_file_has_no_typos_hiding_in_the_raw_lines():
+    # load_words strips whitespace, so check the file itself for stray characters.
+    for line in (DATA_DIR / "answers.txt").read_text().splitlines():
+        if line and not line.startswith("#"):
+            assert len(line) == 5 and line.isascii() and line.isalpha() and line.islower(), line
+
+
+def test_guess_list_is_much_bigger_than_the_answer_list():
+    assert len(VALID_GUESSES) >= 4000
+    assert set(ANSWERS) <= VALID_GUESSES
+    assert all(len(w) == 5 and w.isascii() and w.isalpha() and w.islower() for w in VALID_GUESSES)
+
+
+@pytest.mark.parametrize("word", ["honor", "armor", "color", "fjord", "nymph"])
+def test_british_and_american_spellings_are_accepted(word):
+    assert is_valid_guess(word)
+
+
+def test_load_words_skips_comments_and_blank_lines(tmp_path):
+    f = tmp_path / "words.txt"
+    f.write_text("# a comment\n\ncrane\n  slate  \n")
+    assert load_words(f) == ["crane", "slate"]

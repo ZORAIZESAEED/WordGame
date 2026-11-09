@@ -97,8 +97,7 @@ That's a lot for a portfolio piece nobody's using. Hence the rule for now: don't
    Low priority for a single-player game.
 8. **Pinned dependencies.** `requirements*.txt` use version ranges, so CI can pick up a new
    release overnight. A lock file (`uv pip compile` or `pip-tools`) makes builds repeatable.
-9. **Word list.** 80 answers repeat quickly. Loading a few thousand from a file is a small change
-   with a big effect on the game.
+9. **Word list.** Done: 864 answers and about 4,700 accepted guesses, loaded from text files.
 10. **Leaderboard abuse.** Anyone can post any name and as many games as they like. Fine for a
     demo; rate limiting or accounts would matter once it's public.
 
