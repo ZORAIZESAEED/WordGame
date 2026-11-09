@@ -19,7 +19,10 @@ import pytest
 from playwright.sync_api import Browser, Page, Playwright, sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
-SECRET = "e2e-tests"  # so the tests can work out the daily word
+
+# Shared by the server (it inherits the environment) and the tests, so both agree on the
+# daily word: tests call daily.word_for(), which reads the same variable.
+os.environ["DAILY_WORD_SECRET"] = "e2e-tests"
 
 
 def _free_port() -> int:
@@ -35,7 +38,6 @@ def server(tmp_path_factory) -> Iterator[str]:
     env = {
         **os.environ,
         "DATABASE_URL": f"sqlite:///{db}",
-        "DAILY_WORD_SECRET": SECRET,
         "NO_PROXY": "*",
     }
     proc = subprocess.Popen(

@@ -1,8 +1,12 @@
-"""Play the real game in a browser, mostly on a phone-sized screen."""
+"""Play the real game in a browser, mostly on a phone-sized screen.
+
+Playwright only treats a pattern as a regex when it's an re.compile() object; a plain
+string is matched literally.
+"""
 
 import itertools
+import re
 
-from conftest import SECRET
 from playwright.sync_api import Page, expect
 
 from app import daily
@@ -17,7 +21,7 @@ def new_player() -> str:
 
 
 def todays_word() -> str:
-    return daily.word_for(daily.today(), secret=SECRET)
+    return daily.word_for(daily.today())  # DAILY_WORD_SECRET is set in conftest.py
 
 
 def tap_word(page: Page, word: str) -> None:
@@ -79,7 +83,7 @@ def test_daily_game_on_a_phone(phone):
     expect(phone.locator("#st-played")).to_have_text("1")
     expect(phone.locator("#st-streak")).to_have_text("1")
     expect(phone.locator("#distribution .bar.highlight")).to_have_text("1")
-    expect(phone.locator("#countdown")).to_have_text(r"\d\d:\d\d:\d\d")
+    expect(phone.locator("#countdown")).to_have_text(re.compile(r"\d\d:\d\d:\d\d"))
 
     phone.locator("#share-btn").tap()
     expect(phone.locator("#toasts")).to_contain_text("Copied")
@@ -101,7 +105,7 @@ def test_typing_on_a_real_keyboard(page_for):
     page.keyboard.press("Backspace")
     page.keyboard.type("out")
     page.keyboard.press("Enter")
-    expect(row(page, 0)).to_have_attribute("aria-label", r"ABOUT: .*")
+    expect(row(page, 0)).to_have_attribute("aria-label", re.compile(r"ABOUT: .*"))
     assert page.errors == []
 
 
@@ -109,11 +113,11 @@ def test_daily_picks_up_where_you_left_off(phone):
     name = start(phone)
     first = "about" if todays_word() != "about" else "crane"
     tap_word(phone, first)
-    expect(row(phone, 0)).to_have_attribute("aria-label", rf"{first.upper()}: .*")
+    expect(row(phone, 0)).to_have_attribute("aria-label", re.compile(rf"{first.upper()}: .*"))
 
     phone.reload()
     start(phone, name=name)
-    expect(row(phone, 0)).to_have_attribute("aria-label", rf"{first.upper()}: .*")
+    expect(row(phone, 0)).to_have_attribute("aria-label", re.compile(rf"{first.upper()}: .*"))
     expect(row(phone, 1)).to_have_attribute("aria-label", "Row 2")
 
 
