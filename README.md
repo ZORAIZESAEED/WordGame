@@ -87,6 +87,22 @@ None of it needs AWS credentials or any other secret.
 - **terraform**: `fmt`, `validate`, and `terraform test`, which plans the AWS stack against mocked providers
 - **docker**: builds the image, starts the full compose stack, and runs the smoke test
 
+## Database migrations
+
+The schema is managed by [Alembic](https://alembic.sqlalchemy.org/), with migrations in
+`app/migrations/versions/`. The app applies any pending ones when it starts, so `uvicorn`,
+`docker compose` and the tests all just work. A database created by an older version of
+the app (before migrations) is picked up automatically.
+
+When you change a model in `app/models.py`, write a migration to match:
+
+```bash
+alembic revision --autogenerate --rev-id 0002 -m "describe the change"
+```
+
+Read what it generated before committing. `tests/test_migrations.py` fails if the models
+and migrations ever disagree, so a forgotten migration shows up in CI.
+
 ## Word lists
 
 Answers come from `app/data/answers.txt`: 864 common, family-friendly words in British
@@ -114,6 +130,7 @@ hosts that run Docker.
 ```
 app/            FastAPI app: main.py (routes), game.py (rules), models.py, db.py, words.py
 app/data/       word lists: answers.txt (hand-picked) and allowed.txt (dictionary)
+app/migrations/ Alembic migrations, applied on startup by app/migrate.py
 static/         the frontend (one HTML file)
 tests/          pytest: game logic and API
 scripts/        smoke_test.py, an end-to-end check against a running server
@@ -129,7 +146,8 @@ docs/           architecture notes and review
 - [x] Terraform for AWS: VPC, ECR, ECS Fargate, RDS, ALB, budget alert (written and tested, not applied)
 - [x] Bigger word list: 864 hand-picked answers, about 4,700 accepted guesses
 - [ ] Daily word, plus unlimited practice
-- [ ] Database migrations with Alembic
+- [x] Database migrations with Alembic
+- [x] Simultaneous guesses can't get past the six-attempt limit
 - [ ] Low-cost live demo
 - [ ] CD: build, push and deploy on merge to main (GitHub OIDC, no stored keys)
 - [ ] Accounts

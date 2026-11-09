@@ -90,8 +90,10 @@ That's a lot for a portfolio piece nobody's using. Hence the rule for now: don't
 
 ### App and code quality
 
-6. **Migrations.** Tables are created with `create_all` at startup. That's fine until the schema
-   changes (daily word, accounts). Adding Alembic then would be a good thing to show.
+6. **Migrations.** Done. Alembic owns the schema and runs on startup inside one transaction,
+   behind a Postgres advisory lock so two containers can't migrate at once. Databases made by
+   the old `create_all` are adopted automatically, and a test fails if the models and the
+   migrations ever disagree.
 7. **Concurrent guesses.** Done. Requests sent together could each pass the "six attempts"
    check and save up to eight guesses. A guess now locks the game row (`SELECT ... FOR UPDATE`
    on Postgres; `BEGIN IMMEDIATE` on SQLite), and `tests/test_concurrency.py` fires eight
