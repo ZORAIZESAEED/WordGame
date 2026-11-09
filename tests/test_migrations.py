@@ -56,9 +56,15 @@ def test_downgrade_to_nothing_and_back(reset_db):
 
 
 def test_adopts_a_database_created_before_migrations(reset_db):
-    # The old app made its tables with create_all and had no alembic_version table.
+    # The old app made its tables with create_all, which matched revision 0001 exactly, and
+    # had no alembic_version table. Recreate that: migrate to 0001, then forget it happened.
+    # (Base.metadata.create_all would build today's schema, not the old one.)
     reset_db()
-    Base.metadata.create_all(engine)
+    cfg = alembic_config()
+    with engine.begin() as conn:
+        cfg.attributes["connection"] = conn
+        command.upgrade(cfg, "0001")
+        conn.exec_driver_sql("DROP TABLE alembic_version")
     with engine.begin() as conn:
         conn.execute(
             text(
