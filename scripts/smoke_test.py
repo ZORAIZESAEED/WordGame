@@ -60,4 +60,18 @@ check(status == 200 and again["guesses"] == game["guesses"], "game is saved in t
 status, board = call("GET", "/api/leaderboard")
 check(status == 200 and isinstance(board, list), "leaderboard responds")
 
+status, info = call("GET", "/api/daily")
+check(status == 200 and info["number"] >= 1 and "word" not in info, "daily puzzle info")
+
+# 201 the first time today, 200 if an earlier smoke run already started it.
+status, day_game = call("POST", "/api/daily", {"player": "smoke-test"})
+check(status in (200, 201) and day_game["mode"] == "daily", "start (or resume) the daily")
+check(day_game["daily_number"] == info["number"], "daily game is today's puzzle")
+
+status, again = call("POST", "/api/daily", {"player": "smoke-test"})
+check(status == 200 and again["id"] == day_game["id"], "one daily game per player per day")
+
+status, daily_board = call("GET", "/api/daily/leaderboard")
+check(status == 200 and isinstance(daily_board, list), "daily leaderboard responds")
+
 print("Smoke test passed against " + BASE)
