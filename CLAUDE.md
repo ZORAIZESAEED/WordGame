@@ -16,7 +16,12 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 ## Current state
 - FastAPI backend in `app/` (game logic in `game.py`, no web code in it), SQLAlchemy models,
   SQLite locally and Postgres via `DATABASE_URL`.
-- Static frontend in `static/index.html`.
+- Frontend in `static/`: `index.html`, `style.css`, `app.js`. Plain DOM, no build step or
+  libraries. Mobile-first; respects prefers-reduced-motion; player names go in with textContent.
+- Player stats: pure logic in `app/stats.py`, served by `GET /api/players/{name}/stats`.
+- Browser tests in `e2e/` (Playwright, Python). Not collected by plain `pytest`; run `pytest e2e`.
+  They start their own uvicorn on SQLite. Use `re.compile(...)` for regex expectations: plain
+  strings are matched literally.
 - Tests in `tests/` run on SQLite by default; set `TEST_DATABASE_URL` for Postgres (never
   `DATABASE_URL`: the tests drop all tables). `pythonpath = ["."]` in the pytest config is what
   lets a bare `pytest` import `app`, so keep it. CI runs `ruff check` and `ruff format --check`.
@@ -35,7 +40,7 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Dockerfile + docker-compose (api + Postgres, both with healthchecks). `scripts/smoke_test.py`
   plays a round against a running server.
 - GitHub Actions CI in `.github/workflows/ci.yml`: ruff + pytest on SQLite and Postgres;
-  Terraform fmt/validate/test (mocked, no credentials); compose stack + smoke test.
+  browser tests; Terraform fmt/validate/test (mocked, no credentials); compose stack + smoke test.
 - `docs/architecture.md` has the architecture review, cost table and open suggestions.
 - Terraform in `infra/` (see `infra/README.md`): `bootstrap/` = budget alert + S3 state bucket;
   main stack = VPC, ECR, ECS Fargate, RDS, ALB. Validated and plan-tested with mocks,
@@ -48,6 +53,8 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Builds there need `--network host`, and pip inside the container doesn't trust the sandbox's
   proxy certificate. Work around that with a throwaway Dockerfile copy that adds
   `/root/.ccr/ca-bundle.crt` and sets `PIP_CERT`. Don't commit that to the real Dockerfile.
+- Browser tests here: `pip install -r requirements-e2e.txt`, then
+  `CHROMIUM_PATH=/opt/pw-browsers/chromium NO_PROXY='*' pytest e2e` (don't `playwright install`).
 - Terraform isn't preinstalled: get it from releases.hashicorp.com (checksum it). The environment
   allows registry.terraform.io for providers. Set `CHECKPOINT_DISABLE=1` (its telemetry host is blocked).
 - No AWS credentials in the environment yet. Add them before running `terraform plan` there.
@@ -58,8 +65,8 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Full stack: `docker compose up --build`
 
 ## Next steps, in order
-1. One branch and one PR (with tests) per feature: mobile UI, animations, on-screen keyboard, stats and sharing. Pinned dependencies when
-   convenient (see `docs/architecture.md`).
+1. One branch and one PR (with tests) per feature. Open ideas: pinned dependencies (see
+   `docs/architecture.md`), hard mode, a light theme.
 2. Later, with approval: a free or low-cost live demo. Applying `infra/` (bootstrap first, for
    the budget) and a CD workflow with GitHub OIDC only if the owner asks.
 3. Later: accounts, RL opponent (links to the user's MSc research on word acquisition).
