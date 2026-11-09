@@ -13,7 +13,10 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Dockerfile + docker-compose (api + Postgres). The image builds, passes the `/health`
   smoke test, and works against Postgres 16.
 - GitHub Actions CI in `.github/workflows/ci.yml` (lint, test, build image, smoke test).
-  Green on `main`.
+  Green on `main`. Also runs `terraform fmt`, `validate` and `terraform test` on `infra/`.
+- Terraform in `infra/` (see `infra/README.md`): `bootstrap/` = budget alert + S3 state bucket;
+  main stack = VPC, ECR, ECS Fargate, RDS, ALB. Validated and plan-tested with mocks,
+  NOT applied to AWS yet. No NAT gateway on purpose (cost); tasks get public IPs.
 
 ## Cloud sessions
 - The "WordGame" cloud environment's setup script creates `.venv` (Python 3.12) with
@@ -22,6 +25,8 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Builds there need `--network host`, and pip inside the container doesn't trust the sandbox's
   proxy certificate. Work around that with a throwaway Dockerfile copy that adds
   `/root/.ccr/ca-bundle.crt` and sets `PIP_CERT`. Don't commit that to the real Dockerfile.
+- Terraform isn't preinstalled: get it from releases.hashicorp.com (checksum it). The environment
+  allows registry.terraform.io for providers. Set `CHECKPOINT_DISABLE=1` (its telemetry host is blocked).
 - No AWS credentials in the environment yet. Add them before running `terraform plan` there.
 
 ## Commands
@@ -30,7 +35,7 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Full stack: `docker compose up --build`
 
 ## Next steps, in order
-1. Terraform in `infra/`: VPC, ECR, ECS Fargate, RDS Postgres, ALB. Budget alert first.
+1. Apply `infra/` to AWS, following `infra/README.md` (bootstrap first, for the budget).
 2. CD workflow: build and push to ECR, deploy to ECS on merge to main, using GitHub OIDC
    (no long-lived AWS keys stored in the repo).
 3. Later: daily word, accounts, RL opponent (links to the user's MSc research on word acquisition).
