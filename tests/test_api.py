@@ -1,7 +1,9 @@
 import os
 
 # Use a throwaway database for the whole test run. Must be set before importing the app.
-os.environ["DATABASE_URL"] = "sqlite:///./test_wordgame.db"
+# Defaults to SQLite. Set TEST_DATABASE_URL to run the same tests against Postgres.
+# (Deliberately not DATABASE_URL: the tests drop every table, so never point them at real data.)
+os.environ["DATABASE_URL"] = os.getenv("TEST_DATABASE_URL", "sqlite:///./test_wordgame.db")
 
 import pytest
 from fastapi.testclient import TestClient
@@ -77,6 +79,35 @@ def test_rejects_words_not_in_list(client):
     gid = client.post("/api/games", json={"player": "p"}).json()["id"]
     r = client.post(f"/api/games/{gid}/guesses", json={"word": "zzzzz"})
     assert r.status_code == 422
+
+
+def test_player_name_is_trimmed(client):
+    r = client.post("/api/games", json={"player": "  zoraize  "})
+    assert r.status_code == 201
+    assert r.json()["player"] == "zoraize"
+
+
+@pytest.mark.parametrize("name", ["", "   ", "x" * 33])
+def test_rejects_bad_player_names(client, name):
+    assert client.post("/api/games", json={"player": name}).status_code == 422
+
+
+def test_guess_is_case_insensitive(client):
+    gid = client.post("/api/games", json={"player": "p"}).json()["id"]
+    _force_secret(gid, "crane")
+    body = client.post(f"/api/games/{gid}/guesses", json={"word": "CRANE"}).json()
+    assert body["status"] == "won"
+    assert body["guesses"][0]["word"] == "crane"
+
+
+def test_leaderboard_orders_by_score(client):
+    for player, guesses in [("slow", ["slate", "crane"]), ("fast", ["crane"])]:
+        gid = client.post("/api/games", json={"player": player}).json()["id"]
+        _force_secret(gid, "crane")
+        for w in guesses:
+            client.post(f"/api/games/{gid}/guesses", json={"word": w})
+    board = client.get("/api/leaderboard").json()
+    assert [row["player"] for row in board] == ["fast", "slow"]
 
 
 def test_unknown_game_is_404(client):

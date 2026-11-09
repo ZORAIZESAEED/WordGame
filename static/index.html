@@ -81,13 +81,23 @@ function render(game) {
 async function api(path, opts) {
   const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.detail || "Something went wrong");
+  if (!res.ok) {
+    // FastAPI sends a string for our own errors and a list for validation errors.
+    const d = data.detail;
+    const msg = Array.isArray(d) ? d.map(e => e.msg).join(", ") : d;
+    throw new Error(msg || "Something went wrong");
+  }
   return data;
 }
 
 async function loadLeaders() {
   const rows = await api("/api/leaderboard");
-  $("leaders").innerHTML = rows.map(r => `<li>${r.player.replace(/</g,"&lt;")} - ${r.score}</li>`).join("");
+  const list = $("leaders");
+  list.replaceChildren(...rows.map(r => {
+    const li = document.createElement("li");
+    li.textContent = `${r.player} - ${r.score}`;  // textContent, so names can't inject HTML
+    return li;
+  }));
 }
 
 $("start").addEventListener("submit", async (e) => {
