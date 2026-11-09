@@ -31,7 +31,7 @@ resource "aws_iam_role_policy_attachment" "execution_managed" {
 data "aws_iam_policy_document" "execution_secrets" {
   statement {
     actions   = ["ssm:GetParameters"]
-    resources = [aws_ssm_parameter.database_url.arn]
+    resources = [aws_ssm_parameter.database_url.arn, aws_ssm_parameter.daily_word_secret.arn]
   }
 }
 
@@ -67,10 +67,16 @@ resource "aws_ecs_task_definition" "app" {
     essential    = true
     portMappings = [{ containerPort = 8000, protocol = "tcp" }]
 
-    secrets = [{
-      name      = "DATABASE_URL"
-      valueFrom = aws_ssm_parameter.database_url.arn
-    }]
+    secrets = [
+      {
+        name      = "DATABASE_URL"
+        valueFrom = aws_ssm_parameter.database_url.arn
+      },
+      {
+        name      = "DAILY_WORD_SECRET"
+        valueFrom = aws_ssm_parameter.daily_word_secret.arn
+      },
+    ]
 
     logConfiguration = {
       logDriver = "awslogs"

@@ -83,6 +83,13 @@ terraform output app_url
 RDS takes about ten minutes to come up. Once the target group reports the task as healthy,
 the URL serves the game.
 
+## Secrets
+
+Terraform generates two values and stores them in SSM Parameter Store as SecureStrings:
+
+- the database password, built into a full `DATABASE_URL`
+- `DAILY_WORD_SECRET`, which seeds the daily-word schedule so it can't be worked out from the code
+
 ## How the database password works
 
 Terraform generates the password, builds the full `DATABASE_URL` and stores it in SSM

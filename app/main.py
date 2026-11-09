@@ -1,15 +1,18 @@
 from contextlib import asynccontextmanager
+from datetime import date
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, StringConstraints, field_validator
 from pydantic_core import PydanticCustomError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from . import daily
 from . import game as logic
 from .db import engine, get_db
 from .migrate import upgrade_to_head
@@ -53,6 +56,8 @@ class GuessOut(BaseModel):
 class GameOut(BaseModel):
     id: str
     player: str
+    mode: str  # practice | daily
+    daily_number: int | None = None  # "Daily #12", for daily games
     status: str
     score: int
     attempts_used: int
@@ -66,10 +71,17 @@ class LeaderboardRow(BaseModel):
     score: int
 
 
+class DailyInfo(BaseModel):
+    date: date
+    number: int
+
+
 def _to_out(g: Game) -> GameOut:
     return GameOut(
         id=g.id,
         player=g.player,
+        mode=g.mode,
+        daily_number=daily.puzzle_number(g.daily_date) if g.daily_date else None,
         status=g.status,
         score=g.score,
         attempts_used=len(g.guesses),
@@ -99,6 +111,54 @@ def new_game(body: NewGame, db: Session = Depends(get_db)):
     db.add(g)
     db.commit()
     return _to_out(g)
+
+
+def _find_daily(db: Session, player: str, day: date) -> Game | None:
+    return db.scalars(
+        select(Game).where(Game.player == player, Game.daily_date == day)
+    ).one_or_none()
+
+
+@app.get("/api/daily", response_model=DailyInfo)
+def daily_info():
+    """Which daily puzzle is live right now. Never includes the word."""
+    day = daily.today()
+    return DailyInfo(date=day, number=daily.puzzle_number(day))
+
+
+@app.post("/api/daily", response_model=GameOut, status_code=201)
+def start_daily(body: NewGame, response: Response, db: Session = Depends(get_db)):
+    """Start today's daily game, or carry on with it if this player already started one."""
+    day = daily.today()
+    existing = _find_daily(db, body.player, day)
+    if existing is not None:
+        response.status_code = 200
+        return _to_out(existing)
+
+    g = Game(player=body.player, secret=daily.word_for(day), mode="daily", daily_date=day)
+    db.add(g)
+    try:
+        db.commit()
+    except IntegrityError:
+        # Another request for the same player and day got there first (the unique
+        # constraint stopped a second game), so hand back that one.
+        db.rollback()
+        response.status_code = 200
+        return _to_out(_find_daily(db, body.player, day))
+    return _to_out(g)
+
+
+@app.get("/api/daily/leaderboard", response_model=list[LeaderboardRow])
+def daily_leaderboard(limit: int = 10, db: Session = Depends(get_db)):
+    """Today's daily winners: fewest guesses first, then whoever finished earliest."""
+    limit = max(1, min(limit, 50))
+    rows = db.execute(
+        select(Game.player, Game.score)
+        .where(Game.daily_date == daily.today(), Game.status == "won")
+        .order_by(Game.score.desc(), Game.created_at.asc())
+        .limit(limit)
+    ).all()
+    return [LeaderboardRow(player=p, score=s) for p, s in rows]
 
 
 @app.get("/api/games/{game_id}", response_model=GameOut)

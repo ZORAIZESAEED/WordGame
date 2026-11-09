@@ -27,6 +27,9 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
   then review it). The app runs `upgrade_to_head` on startup (`app/migrate.py`).
   `tests/test_migrations.py` fails if models and migrations differ. The test reset also drops
   `alembic_version`.
+- Daily challenge: `app/daily.py` picks the word from a seeded shuffle of the answers
+  (`DAILY_WORD_SECRET`; UTC days; `FIRST_DAY` must not change). One daily game per player per
+  day, enforced by `uq_games_player_daily_date`. Tests pin the day by monkeypatching `daily.today`.
 - Word lists live in `app/data/`: `answers.txt` (hand-picked, British spelling, family-friendly)
   and `allowed.txt` (SCOWL British + American five-letter words; keep `SCOWL-LICENSE.txt` with it).
 - Dockerfile + docker-compose (api + Postgres, both with healthchecks). `scripts/smoke_test.py`
@@ -55,12 +58,11 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Full stack: `docker compose up --build`
 
 ## Next steps, in order
-1. One branch and one PR (with tests) per feature, in this order: daily challenge + practice mode;
-   mobile UI, animations, on-screen keyboard, stats and sharing. Pinned dependencies when
+1. One branch and one PR (with tests) per feature: mobile UI, animations, on-screen keyboard, stats and sharing. Pinned dependencies when
    convenient (see `docs/architecture.md`).
 2. Later, with approval: a free or low-cost live demo. Applying `infra/` (bootstrap first, for
    the budget) and a CD workflow with GitHub OIDC only if the owner asks.
-3. Later: daily word, accounts, RL opponent (links to the user's MSc research on word acquisition).
+3. Later: accounts, RL opponent (links to the user's MSc research on word acquisition).
 
 ## Preferences
 - Write README and docs text in a natural, human voice, not stiff or generic.

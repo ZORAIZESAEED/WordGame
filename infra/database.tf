@@ -41,3 +41,16 @@ resource "aws_ssm_parameter" "database_url" {
   type  = "SecureString"
   value = "postgresql+psycopg://${aws_db_instance.main.username}:${random_password.db.result}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}"
 }
+
+# Seeds the daily-word schedule (app/daily.py). Without it the app falls back to a default
+# that's in the public repo, so anyone could work out upcoming daily words.
+resource "random_password" "daily_word" {
+  length  = 32
+  special = false
+}
+
+resource "aws_ssm_parameter" "daily_word_secret" {
+  name  = "/${var.project}/daily_word_secret"
+  type  = "SecureString"
+  value = random_password.daily_word.result
+}
