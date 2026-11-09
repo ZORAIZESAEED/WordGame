@@ -79,8 +79,10 @@ def _to_out(g: Game) -> GameOut:
     )
 
 
-def _get_game(db: Session, game_id: str) -> Game:
-    g = db.get(Game, game_id)
+def _get_game(db: Session, game_id: str, *, lock: bool = False) -> Game:
+    # lock=True takes a row lock (SELECT ... FOR UPDATE on Postgres) that's held until
+    # commit, so a second request for the same game waits and then sees the first one's guess.
+    g = db.get(Game, game_id, with_for_update=lock)
     if g is None:
         raise HTTPException(404, "Game not found")
     return g
@@ -106,7 +108,8 @@ def get_game(game_id: str, db: Session = Depends(get_db)):
 
 @app.post("/api/games/{game_id}/guesses", response_model=GameOut)
 def make_guess(game_id: str, body: GuessIn, db: Session = Depends(get_db)):
-    g = _get_game(db, game_id)
+    # Lock first: everything below reads the game and writes back based on what it saw.
+    g = _get_game(db, game_id, lock=True)
     if g.status != "playing":
         raise HTTPException(409, "Game is already over")
 

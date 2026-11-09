@@ -20,6 +20,9 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Tests in `tests/` run on SQLite by default; set `TEST_DATABASE_URL` for Postgres (never
   `DATABASE_URL`: the tests drop all tables). `pythonpath = ["."]` in the pytest config is what
   lets a bare `pytest` import `app`, so keep it. CI runs `ruff check` and `ruff format --check`.
+- Guessing locks the game row (`_get_game(..., lock=True)`); SQLite uses `BEGIN IMMEDIATE`
+  (see `app/db.py`). Keep any new read-then-write endpoint behind the same lock.
+  `tests/test_concurrency.py` checks it with real threads.
 - Word lists live in `app/data/`: `answers.txt` (hand-picked, British spelling, family-friendly)
   and `allowed.txt` (SCOWL British + American five-letter words; keep `SCOWL-LICENSE.txt` with it).
 - Dockerfile + docker-compose (api + Postgres, both with healthchecks). `scripts/smoke_test.py`
@@ -48,8 +51,7 @@ The game is a vehicle for the infrastructure work, so keep the app simple.
 - Full stack: `docker compose up --build`
 
 ## Next steps, in order
-1. One branch and one PR (with tests) per feature, in this order: row locking so concurrent
-   guesses can't exceed six attempts; Alembic migrations; daily challenge + practice mode;
+1. One branch and one PR (with tests) per feature, in this order: Alembic migrations; daily challenge + practice mode;
    mobile UI, animations, on-screen keyboard, stats and sharing. Pinned dependencies when
    convenient (see `docs/architecture.md`).
 2. Later, with approval: a free or low-cost live demo. Applying `infra/` (bootstrap first, for
